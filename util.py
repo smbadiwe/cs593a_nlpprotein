@@ -46,7 +46,9 @@ DATASETS_AND_PATHS = {
                   'CB513_HHblits.csv'),
     'casp12test': ('https://www.dropbox.com/s/te0vn0t7ocdkra7/CASP12_HHblits.csv?dl=1',
                    'CASP12_HHblits.csv'),
-    'combinedtest': ('', 'Validation_HHblits.csv')
+    'combinedtest': ('', 'Validation_HHblits.csv'),
+    'set2018': ('https://raw.githubusercontent.com/sh-maxim/ss/master/S2_Data_set.txt',
+                'set2018.txt')
 }
 
 datasetFolderPath = "dataset/"

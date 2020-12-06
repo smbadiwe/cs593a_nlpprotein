@@ -79,6 +79,36 @@ class SS3Dataset(Dataset):
         return len(self.labels)
 
 
+class DatasetLoader:
+    def __init__(self, max_length, n_labels=8):
+        self.n_labels = n_labels
+        self.max_length = max_length
+
+    def load_dataset(self, file_path) -> tuple:
+        dssp = f'dssp{self.n_labels}'
+        df = pd.read_csv(file_path, skiprows=1, names=['input', dssp, 'disorder', 'cb513_mask'])
+        print(f"{file_path} dataset columns:\n", df.columns.tolist())
+
+        df['input_fixed'] = ["".join(seq.split()) for seq in df['input']]
+        df['input_fixed'] = [re.sub(r"[UZOB]", "X", seq) for seq in df['input_fixed']]
+        seqs = [list(seq)[:self.max_length - 2] for seq in df['input_fixed']]
+
+        df['label_fixed'] = ["".join(label.split()) for label in df[dssp]]
+        labels = [list(label)[:self.max_length - 2] for label in df['label_fixed']]
+
+        df['disorder_fixed'] = [" ".join(disorder.split()) for disorder in df['disorder']]
+        disorder = [disorder.split()[:self.max_length - 2] for disorder in df['disorder_fixed']]
+
+        assert len(seqs) == len(labels) == len(disorder)
+
+        return seqs, labels, disorder
+
+
+class Set2018DatasetLoader(DatasetLoader):
+    def load_dataset(self, file_path) -> tuple:
+        pass
+
+
 class HuggingFaceRunner:
     def __init__(self, experiment_name, n_labels=3, model_name="Rostlab/prot_bert", max_length=1024):
         assert n_labels in [3, 8], f"n_labels should be 3 or 8, not {n_labels}"
@@ -154,28 +184,13 @@ class HuggingFaceRunner:
 
         return trainer
 
-    def _load_dataset(self, file_path) -> tuple:
-        dssp = f'dssp{self.n_labels}'
-        df = pd.read_csv(file_path, skiprows=1, names=['input', dssp, 'disorder', 'cb513_mask'])
-        print(f"{file_path} dataset columns:\n", df.columns.tolist())
-
-        df['input_fixed'] = ["".join(seq.split()) for seq in df['input']]
-        df['input_fixed'] = [re.sub(r"[UZOB]", "X", seq) for seq in df['input_fixed']]
-        seqs = [list(seq)[:self.max_length - 2] for seq in df['input_fixed']]
-
-        df['label_fixed'] = ["".join(label.split()) for label in df[dssp]]
-        labels = [list(label)[:self.max_length - 2] for label in df['label_fixed']]
-
-        df['disorder_fixed'] = [" ".join(disorder.split()) for disorder in df['disorder']]
-        disorder = [disorder.split()[:self.max_length - 2] for disorder in df['disorder_fixed']]
-
-        assert len(seqs) == len(labels) == len(disorder)
-
-        return seqs, labels, disorder
-
     def get_dataset(self, key: str) -> 'SS3Dataset':
         _, file = DATASETS_AND_PATHS[key]
-        seqs, labels, disorder = self._load_dataset(path.join(datasetFolderPath, file))
+        if key == 'set2018':
+            loader = Set2018DatasetLoader(max_length=self.max_length, n_labels=self.n_labels)
+        else:
+            loader = DatasetLoader(max_length=self.max_length, n_labels=self.n_labels)
+        seqs, labels, disorder = loader.load_dataset(path.join(datasetFolderPath, file))
 
         if self.tag2id is None:
             # Consider each label as a tag for each token

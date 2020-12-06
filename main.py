@@ -17,7 +17,8 @@ expt_2 = {
 
 def run():
     runner = HuggingFaceRunner(**expt_2)
-    runner.train()
+    runner.get_dataset("netsurfp")
+    # runner.train()
 
 
 if __name__ == '__main__':
