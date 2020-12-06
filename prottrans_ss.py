@@ -20,6 +20,7 @@ def download_data(key):
         os.makedirs(datasetFolderPath)
 
     def download_file(url, filename):
+        print(f"Downloading file {filename} from {url}...")
         response = requests.get(url, stream=True)
         with tqdm.wrapattr(open(filename, "wb"), "write", miniters=1,
                            total=int(response.headers.get('content-length', 0)),
@@ -28,17 +29,23 @@ def download_data(key):
                 fout.write(chunk)
 
     url_path, file = DATASETS_AND_PATHS[key]
-
+    file = os.path.join(datasetFolderPath, file)
     if not os.path.exists(file):
         if url_path:
             download_file(url_path, file)
-        else:  # combine all test dataset files. To be used as val.
-            combined_csv = pd.concat(
-                [pd.read_csv(f) for k, f in DATASETS_AND_PATHS.items() if f[0] and k.endswith('test')])
+        else:  # combine all test dataset files. To be used as val. pd.read_csv
+            print("combine all test dataset files. To be used as val.")
+            concats = []
+            for k, f in DATASETS_AND_PATHS.items():
+                if f[0] and k.endswith('test'):
+                    the_file = os.path.join(datasetFolderPath, f[1])
+                    print("COMBINE: Loading file ", the_file)
+                    concats.append(pd.read_csv(the_file))
+            combined_csv = pd.concat(concats)
+            # combined_csv = pd.concat(
+            #     [pd.read_csv(os.path.join(datasetFolderPath, f[1])) for k, f in DATASETS_AND_PATHS.items() if f[0] and k.endswith('test')])
             # export to csv
-            combined_csv.to_csv(os.path.join(datasetFolderPath, file),
-                                index=False,
-                                encoding='utf-8-sig')
+            combined_csv.to_csv(file, index=False, encoding='utf-8-sig')
 
 
 def download_netsurfp_dataset():
@@ -119,8 +126,8 @@ class HuggingFaceRunner:
             experiment_name = model_name.split('/')[-1]
         self.experiment_name = experiment_name
         self.max_length = max_length
-        self.results_dir = path.join('./results', model_name, f"SS{n_labels}", experiment_name)
-        self.logs_dir = path.join('./logs', model_name, f"SS{n_labels}", experiment_name)
+        self.results_dir = path.join('./results', model_name, f"SS{n_labels}-{max_length}", experiment_name)
+        self.logs_dir = path.join('./logs', model_name, f"SS{n_labels}-{max_length}", experiment_name)
         try:
             self.seq_tokenizer = BertTokenizerFast.from_pretrained(self.results_dir,
                                                                    do_lower_case=False)
@@ -174,7 +181,7 @@ class HuggingFaceRunner:
         dssp = f'dssp{self.n_labels}'
         df = pd.read_csv(file_path, skiprows=1,
                          names=['input', dssp, 'disorder', 'cb513_mask'])
-
+        print(f"{file_path} dataset columns:\n", df.columns.tolist())
         df['input_fixed'] = ["".join(seq.split()) for seq in df['input']]
         df['input_fixed'] = [re.sub(r"[UZOB]", "X", seq) for seq in df['input_fixed']]
         seqs = [list(seq)[:self.max_length - 2] for seq in df['input_fixed']]
@@ -191,11 +198,12 @@ class HuggingFaceRunner:
 
     def get_dataset(self, key: str) -> 'SS3Dataset':
         _, file = DATASETS_AND_PATHS[key]
-        seqs, labels, disorder = self.load_dataset(file)
+        seqs, labels, disorder = self.load_dataset(path.join(datasetFolderPath, file))
 
+        unique_tags = set(tag for doc in labels for tag in doc)
+        print(f"Key: {key}. Unique Tags: {len(unique_tags)}\n", unique_tags)
         if self.tag2id is None and key.endswith('test'):
             # Consider each label as a tag for each token
-            unique_tags = set(tag for doc in labels for tag in doc)
             self.n_labels = len(unique_tags)
             self.tag2id = {tag: i for i, tag in enumerate(unique_tags)}
             self.id2tag = {i: tag for tag, i in self.tag2id.items()}
