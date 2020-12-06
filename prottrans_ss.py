@@ -65,33 +65,6 @@ def mask_disorder(labels, masks):
                 label[i + 1] = -100
 
 
-def align_predictions(predictions: np.ndarray, label_ids: np.ndarray):
-    preds = np.argmax(predictions, axis=2)
-
-    batch_size, seq_len = preds.shape
-
-    out_label_list = [[] for _ in range(batch_size)]
-    preds_list = [[] for _ in range(batch_size)]
-
-    for i in range(batch_size):
-        for j in range(seq_len):
-            if label_ids[i, j] != torch.nn.CrossEntropyLoss().ignore_index:
-                out_label_list[i].append(ID_AA_DICT[label_ids[i][j]])
-                preds_list[i].append(ID_AA_DICT[preds[i][j]])
-
-    return preds_list, out_label_list
-
-
-def compute_metrics(p: EvalPrediction):
-    preds_list, out_label_list = align_predictions(p.predictions, p.label_ids)
-    return {
-        "accuracy": accuracy_score(out_label_list, preds_list),
-        "precision": precision_score(out_label_list, preds_list),
-        "recall": recall_score(out_label_list, preds_list),
-        "f1": f1_score(out_label_list, preds_list),
-    }
-
-
 class SS3Dataset(Dataset):
     def __init__(self, encodings, labels):
         self.encodings = encodings
@@ -117,17 +90,18 @@ class HuggingFaceRunner:
         self.max_length = max_length
         self.results_dir = path.join('./results', model_name, f"SS{n_labels}-{max_length}", experiment_name)
         self.logs_dir = path.join('./logs', model_name, f"SS{n_labels}-{max_length}", experiment_name)
-        try:
-            self.seq_tokenizer = BertTokenizerFast.from_pretrained(self.results_dir,
-                                                                   do_lower_case=False)
-        except Exception as e:
-            print(f"Failure loading tokenizer from {self.results_dir}. It probably doesn't exist yet.")
-            print(e, f"Loading tokenizer from {model_name}...")
-            self.seq_tokenizer = BertTokenizerFast.from_pretrained(model_name,
-                                                                   do_lower_case=False)
+        self.seq_tokenizer = self.get_tokenizer()
         self.id2tag: dict = None
         self.tag2id: dict = None
         download_netsurfp_dataset()
+
+    def get_tokenizer(self):
+        try:
+            return BertTokenizerFast.from_pretrained(self.results_dir, do_lower_case=False)
+        except Exception as e:
+            print(f"Failure loading tokenizer from {self.results_dir}. It probably doesn't exist yet.")
+            print(e, f"Loading tokenizer from {model_name}...")
+            return BertTokenizerFast.from_pretrained(self.model_name, do_lower_case=False)
 
     def encode_tags(self, tags, encodings) -> list:
         labels = [[self.tag2id[tag] for tag in doc] for doc in tags]
@@ -143,7 +117,7 @@ class HuggingFaceRunner:
 
         return encoded_labels
 
-    def _get_trainer(self, model_init, train_dataset, val_dataset, experiment_name=None) -> 'Trainer':
+    def get_trainer(self, model_init, train_dataset, val_dataset, experiment_name=None) -> 'Trainer':
         if not experiment_name:
             experiment_name = self.model_name.split('/')[-1]
 
@@ -180,7 +154,7 @@ class HuggingFaceRunner:
 
         return trainer
 
-    def load_dataset(self, file_path) -> tuple:
+    def _load_dataset(self, file_path) -> tuple:
         dssp = f'dssp{self.n_labels}'
         df = pd.read_csv(file_path, skiprows=1, names=['input', dssp, 'disorder', 'cb513_mask'])
         print(f"{file_path} dataset columns:\n", df.columns.tolist())
@@ -201,7 +175,7 @@ class HuggingFaceRunner:
 
     def get_dataset(self, key: str) -> 'SS3Dataset':
         _, file = DATASETS_AND_PATHS[key]
-        seqs, labels, disorder = self.load_dataset(path.join(datasetFolderPath, file))
+        seqs, labels, disorder = self._load_dataset(path.join(datasetFolderPath, file))
 
         if self.tag2id is None:
             # Consider each label as a tag for each token
@@ -244,18 +218,42 @@ class HuggingFaceRunner:
                                                                            label2id=self.tag2id,
                                                                            gradient_checkpointing=False)
 
-        trainer = self._get_trainer(model, train_dataset=train_data,
-                                    val_dataset=val_data)
+        trainer = self.get_trainer(model, train_dataset=train_data,
+                                   val_dataset=val_data)
         trainer.train()
-
+        if trainer.tokenizer is None:
+            trainer.tokenizer = self.seq_tokenizer
         trainer.save_model(self.results_dir)
-        fs = self.seq_tokenizer.save_pretrained(self.results_dir)
-        print(f"Saved model and tokenizer. Tokenizer files saved:\n", fs)
         return trainer
 
     def test(self, trainer, dataset_key="casp12test"):
         test_dataset = self.get_dataset(dataset_key)
         predictions, label_ids, metrics = trainer.predict(test_dataset)
+
+    def align_predictions(self, predictions: np.ndarray, label_ids: np.ndarray):
+        preds = np.argmax(predictions, axis=2)
+
+        batch_size, seq_len = preds.shape
+
+        out_label_list = [[] for _ in range(batch_size)]
+        preds_list = [[] for _ in range(batch_size)]
+
+        for i in range(batch_size):
+            for j in range(seq_len):
+                if label_ids[i, j] != torch.nn.CrossEntropyLoss().ignore_index:
+                    out_label_list[i].append(self.id2tag[label_ids[i][j]])
+                    preds_list[i].append(self.id2tag[preds[i][j]])
+
+        return preds_list, out_label_list
+
+    def compute_metrics(self, p: EvalPrediction):
+        preds_list, out_label_list = self.align_predictions(p.predictions, p.label_ids)
+        return {
+            "accuracy": accuracy_score(out_label_list, preds_list),
+            "precision": precision_score(out_label_list, preds_list),
+            "recall": recall_score(out_label_list, preds_list),
+            "f1": f1_score(out_label_list, preds_list),
+        }
 
 
 if __name__ == "__main__":
