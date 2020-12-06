@@ -143,7 +143,7 @@ class HuggingFaceRunner:
 
         return encoded_labels
 
-    def get_trainer(self, model_init, train_dataset, val_dataset, experiment_name=None) -> 'Trainer':
+    def _get_trainer(self, model_init, train_dataset, val_dataset, experiment_name=None) -> 'Trainer':
         if not experiment_name:
             experiment_name = self.model_name.split('/')[-1]
 
@@ -244,8 +244,8 @@ class HuggingFaceRunner:
                                                                            label2id=self.tag2id,
                                                                            gradient_checkpointing=False)
 
-        trainer = self.get_trainer(model, train_dataset=train_data,
-                                   val_dataset=val_data)
+        trainer = self._get_trainer(model, train_dataset=train_data,
+                                    val_dataset=val_data)
         trainer.train()
 
         trainer.save_model(self.results_dir)

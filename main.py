@@ -7,7 +7,7 @@ expt_1 = {
     'experiment_name': "prot_bert",
     'n_labels': 8,
     'model_name': "Rostlab/prot_bert",
-    'max_length': 1024
+    'max_length': 512  # 1024
 }
 
 
