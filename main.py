@@ -5,7 +5,7 @@ max_length = 1024
 
 expt_1 = {
     'experiment_name': "prot_bert",
-    'n_labels': 3,
+    'n_labels': 8,
     'model_name': "Rostlab/prot_bert",
     'max_length': 1024
 }

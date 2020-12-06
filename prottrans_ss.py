@@ -61,21 +61,6 @@ def mask_disorder(labels, masks):
                 label[i + 1] = -100
 
 
-def encode_tags(tags, encodings):
-    labels = [[AA_ID_DICT[tag] for tag in doc] for doc in tags]
-    encoded_labels = []
-    for doc_labels, doc_offset in zip(labels, encodings.offset_mapping):
-        # create an empty array of -100
-        doc_enc_labels = np.ones(len(doc_offset), dtype=int) * -100
-        arr_offset = np.array(doc_offset)
-
-        # set labels whose first offset position is 0 and the second is not 0
-        doc_enc_labels[(arr_offset[:, 0] == 0) & (arr_offset[:, 1] != 0)] = doc_labels
-        encoded_labels.append(doc_enc_labels.tolist())
-
-    return encoded_labels
-
-
 def align_predictions(predictions: np.ndarray, label_ids: np.ndarray):
     preds = np.argmax(predictions, axis=2)
 
@@ -140,6 +125,20 @@ class HuggingFaceRunner:
         self.tag2id: dict = None
         download_netsurfp_dataset()
 
+    def encode_tags(self, tags, encodings) -> list:
+        labels = [[self.tag2id[tag] for tag in doc] for doc in tags]
+        encoded_labels = []
+        for doc_labels, doc_offset in zip(labels, encodings.offset_mapping):
+            # create an empty array of -100
+            doc_enc_labels = np.ones(len(doc_offset), dtype=int) * -100
+            arr_offset = np.array(doc_offset)
+
+            # set labels whose first offset position is 0 and the second is not 0
+            doc_enc_labels[(arr_offset[:, 0] == 0) & (arr_offset[:, 1] != 0)] = doc_labels
+            encoded_labels.append(doc_enc_labels.tolist())
+
+        return encoded_labels
+
     def get_trainer(self, model_init, train_dataset, val_dataset, experiment_name=None) -> 'Trainer':
         if not experiment_name:
             experiment_name = self.model_name.split('/')[-1]
@@ -158,7 +157,7 @@ class HuggingFaceRunner:
             do_eval=(val_dataset is not None),  # Perform evaluation
             evaluation_strategy="epoch",  # evaluate after each epoch
             gradient_accumulation_steps=32,  # total number of steps before back propagation
-            fp16=True,  # Use mixed precision
+            fp16=False,  # True,  # Use mixed precision
             fp16_opt_level="02",  # mixed precision mode
             run_name=experiment_name,  # experiment name
             seed=3,  # Seed for experiment reproducibility
@@ -179,9 +178,9 @@ class HuggingFaceRunner:
 
     def load_dataset(self, file_path) -> tuple:
         dssp = f'dssp{self.n_labels}'
-        df = pd.read_csv(file_path, skiprows=1,
-                         names=['input', dssp, 'disorder', 'cb513_mask'])
+        df = pd.read_csv(file_path, skiprows=1, names=['input', dssp, 'disorder', 'cb513_mask'])
         print(f"{file_path} dataset columns:\n", df.columns.tolist())
+
         df['input_fixed'] = ["".join(seq.split()) for seq in df['input']]
         df['input_fixed'] = [re.sub(r"[UZOB]", "X", seq) for seq in df['input_fixed']]
         seqs = [list(seq)[:self.max_length - 2] for seq in df['input_fixed']]
@@ -200,11 +199,11 @@ class HuggingFaceRunner:
         _, file = DATASETS_AND_PATHS[key]
         seqs, labels, disorder = self.load_dataset(path.join(datasetFolderPath, file))
 
-        unique_tags = set(tag for doc in labels for tag in doc)
-        print(f"Key: {key}. Unique Tags: {len(unique_tags)}\n", unique_tags)
-        if self.tag2id is None and key.endswith('test'):
+        if self.tag2id is None:
             # Consider each label as a tag for each token
+            unique_tags = set(tag for doc in labels for tag in doc)
             self.n_labels = len(unique_tags)
+            print(f"Key: {key}. Unique Tags: {self.n_labels}\n", unique_tags)
             self.tag2id = {tag: i for i, tag in enumerate(unique_tags)}
             self.id2tag = {i: tag for tag, i in self.tag2id.items()}
 
@@ -212,7 +211,7 @@ class HuggingFaceRunner:
                                             return_offsets_mapping=True,
                                             truncation=True, padding=True)
 
-        labels_encodings = encode_tags(labels, seqs_encodings)
+        labels_encodings = self.encode_tags(labels, seqs_encodings)
         mask_disorder(labels_encodings, disorder)
         _ = seqs_encodings.pop("offset_mapping")
 
@@ -222,7 +221,7 @@ class HuggingFaceRunner:
         train_data = self.get_dataset("netsurfp")
         val_data = self.get_dataset("combinedtest")
 
-        if model is not None:
+        if model is None:
             def model():
                 try:
                     return AutoModelForTokenClassification.from_pretrained(self.results_dir,
