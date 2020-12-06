@@ -1,0 +1,3 @@
+*.npy.gz
+*.hdf5
+*.txt

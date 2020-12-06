@@ -1,29 +1,16 @@
 import h5py
 from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampler
 from os import path
-from util import BasicSequenceTokenizer, MAX_SEQUENCE_LENGTH, DATA_PATH
-
-
-def print_info(h5_obj, file_sep='\t'):
-    def __print_details(obj, sep):
-        """
-        Iterate through groups in a HDF5 file and prints the groups and datasets names and datasets attributes
-        """
-        if type(obj) in [h5py.Group, h5py.File]:
-            for key in obj.keys():
-                print(sep, '-', key, ':', obj[key])
-                __print_details(obj[key], sep=sep + '\t')
-        elif type(obj) == h5py.Dataset:
-            for key in obj.attrs.keys():
-                print(sep + '\t', '-', key, ':', obj.attrs[key])
-
-    __print_details(h5_obj['/'], file_sep)
+from util import BasicSequenceTokenizer
 
 
 class ProteinNetDataset(Dataset):
+    MAX_SEQUENCE_LENGTH = 2000
+    DATA_PATH = "../cs593a_proteins/data/preprocessed/casp11"
+
     def __init__(self, hfd5_file, tokenizer):
         self.tokenizer = tokenizer
-        self.file_path = path.join(DATA_PATH, hfd5_file + ".hdf5")
+        self.file_path = path.join(self.DATA_PATH, hfd5_file + ".hdf5")
 
         with h5py.File(self.file_path, "r") as f:
             self.length = f["/primary"].shape[0]

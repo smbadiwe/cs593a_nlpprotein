@@ -1,12 +1,20 @@
-from transformers import BertModel, BertTokenizer, BertConfig
-from protein_dataset import ProteinNetDataset
-PRE_TRAINED_MODEL_NAME = "Rostlab/prot_bert"
+from prottrans_ss import HuggingFaceRunner
+model_name = "Rostlab/prot_bert"  # 'Rostlab/prot_bert_bfd'
 
-tokenizer = BertTokenizer.from_pretrained(PRE_TRAINED_MODEL_NAME, do_lower_case=False )
+max_length = 1024
+
+expt_1 = {
+    'experiment_name': "prot_bert",
+    'n_labels': 3,
+    'model_name': "Rostlab/prot_bert",
+    'max_length': 1024
+}
+
+
+def run():
+    runner = HuggingFaceRunner(**expt_1)
+    runner.train()
 
 
 if __name__ == '__main__':
-
-    dd = ProteinNetDataset("training_70", tokenizer)
-    print(dd[5]["sequence"])
-    print(dd[5]["encoding"])
+    run()
