@@ -1,3 +1,7 @@
+"""
+Some intuition from
+https://github.com/agemagician/ProtTrans/blob/master/Fine-Tuning/ProtBert-BFD-FineTune-SS3.ipynb
+"""
 import torch
 from transformers import AutoTokenizer, Trainer, TrainingArguments, AutoModelForTokenClassification, BertTokenizerFast, \
     EvalPrediction
