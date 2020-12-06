@@ -85,8 +85,7 @@ def build_hdf5():
 
 
 class Sep2018Dataset(Dataset):
-    def __init__(self, sequences, labels, tokenizer):
-        self.tokenizer = tokenizer
+    def __init__(self, sequences, labels):
         self.sequences = sequences
         self.labels = labels
 
@@ -96,12 +95,7 @@ class Sep2018Dataset(Dataset):
     def __getitem__(self, item):
         sequence = " ".join(self.sequences[item])
         label = self.labels[item]
-
-        return {
-            "X": X,
-            "label": label,
-            "mask": mask
-        }
+        return sequence, label
 
 
 if __name__ == "__main__":

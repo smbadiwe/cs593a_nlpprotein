@@ -1,7 +1,4 @@
 from prottrans_ss import HuggingFaceRunner
-model_name = "Rostlab/prot_bert"  # 'Rostlab/prot_bert_bfd'
-
-max_length = 1024
 
 expt_1 = {
     'experiment_name': "prot_bert",
@@ -10,9 +7,16 @@ expt_1 = {
     'max_length': 512  # 1024
 }
 
+expt_2 = {
+    'experiment_name': "prot_bert_bfd",
+    'n_labels': 8,
+    'model_name': "Rostlab/prot_bert_bfd",
+    'max_length': 512  # 1024
+}
+
 
 def run():
-    runner = HuggingFaceRunner(**expt_1)
+    runner = HuggingFaceRunner(**expt_2)
     runner.train()
 
 

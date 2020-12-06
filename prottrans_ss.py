@@ -100,7 +100,7 @@ class HuggingFaceRunner:
             return BertTokenizerFast.from_pretrained(self.results_dir, do_lower_case=False)
         except Exception as e:
             print(f"Failure loading tokenizer from {self.results_dir}. It probably doesn't exist yet.")
-            print(e, f"Loading tokenizer from {model_name}...")
+            print(e, f"Loading tokenizer from {self.model_name}...")
             return BertTokenizerFast.from_pretrained(self.model_name, do_lower_case=False)
 
     def encode_tags(self, tags, encodings) -> list:
@@ -149,7 +149,7 @@ class HuggingFaceRunner:
             args=training_args,  # training arguments, defined above
             train_dataset=train_dataset,  # training dataset
             eval_dataset=val_dataset,  # evaluation dataset
-            compute_metrics=compute_metrics,  # evaluation metrics
+            compute_metrics=self.compute_metrics,  # evaluation metrics
         )
 
         return trainer
