@@ -1,5 +1,6 @@
 from prottrans_ss import RunnerForNetSurf2, NetSurf2DatasetLoader
 from set2018 import RunnerForSet2018
+import argparse
 
 expt_prot_bert = {
     'experiment_name': "prot_bert",
@@ -30,7 +31,10 @@ Exception: You're trying to run a `Unigram` model but you're file was trained wi
 
 
 def train():
-    runner = RunnerForNetSurf2(**expt_prot_bert_bfd)
+    parser = argparse.ArgumentParser()
+
+    args = parser.parse_args()
+    runner = RunnerForNetSurf2(**expt_prot_bert)
     runner.train()
 
 
