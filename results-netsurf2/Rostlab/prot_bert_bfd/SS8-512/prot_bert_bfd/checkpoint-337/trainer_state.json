@@ -1,0 +1,28 @@
+{
+  "best_metric": 0.7949604226504215,
+  "best_model_checkpoint": "./results/Rostlab/prot_bert_bfd/SS8-512/prot_bert_bfd/checkpoint-337",
+  "epoch": 0.9992587101556709,
+  "global_step": 337,
+  "is_local_process_zero": true,
+  "is_world_process_zero": true,
+  "log_history": [
+    {
+      "epoch": 0.5930318754633062,
+      "learning_rate": 3e-05,
+      "loss": 1.0118187713623046,
+      "step": 200
+    },
+    {
+      "epoch": 0.9992587101556709,
+      "eval_accuracy": 0.7949604226504215,
+      "eval_f1": 0.7112027329485217,
+      "eval_loss": 0.534915566444397,
+      "eval_precision": 0.8608869242834736,
+      "eval_recall": 0.6058605117912694,
+      "step": 337
+    }
+  ],
+  "max_steps": 1011,
+  "num_train_epochs": 3,
+  "total_flos": 13887461470961664
+}

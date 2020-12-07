@@ -8,9 +8,7 @@ from os import path
 import numpy as np
 import torch
 from seqeval.metrics import accuracy_score, f1_score, precision_score, recall_score
-from transformers import Trainer, TrainingArguments, AutoModelForTokenClassification, \
-    BertTokenizerFast, AlbertTokenizerFast, EvalPrediction, AutoTokenizer
-
+from transformers import Trainer, TrainingArguments, AutoModelForTokenClassification, EvalPrediction, AutoTokenizer
 from ssp_dataset import SSPDataset
 from util import datasetFolderPath, mask_disorder
 
@@ -29,6 +27,7 @@ class HuggingFaceRunner(ABC):
         self._tokenizer: 'AutoTokenizer' = None
         self.id2tag: dict = None
         self.tag2id: dict = None
+        self.eval_mode = False
 
     @property
     def tokenizer(self):
@@ -38,6 +37,8 @@ class HuggingFaceRunner(ABC):
             except Exception as e:
                 print(f"Failure loading tokenizer from {self.results_dir}. It probably doesn't exist yet.")
                 print(e, f"Loading tokenizer from {self.model_name}...")
+                if self.eval_mode:
+                    raise e
                 self._tokenizer = AutoTokenizer.from_pretrained(self.model_name, do_lower_case=False, use_fast=True)
 
             print("TOKENIZER: ", self._tokenizer.__class__.__name__)
@@ -57,10 +58,7 @@ class HuggingFaceRunner(ABC):
 
         return encoded_labels
 
-    def get_trainer(self, model_init, train_dataset, val_dataset, experiment_name=None) -> 'Trainer':
-        if not experiment_name:
-            experiment_name = self.model_name.split('/')[-1]
-
+    def get_trainer(self, model_init, train_dataset, val_dataset) -> 'Trainer':
         training_args = TrainingArguments(
             output_dir=self.results_dir,  # output directory
             num_train_epochs=3,  # total number of training epochs
@@ -77,7 +75,7 @@ class HuggingFaceRunner(ABC):
             gradient_accumulation_steps=32,  # total number of steps before back propagation
             fp16=False,  # True,  # Use mixed precision
             fp16_opt_level="02",  # mixed precision mode
-            run_name=experiment_name,  # experiment name
+            run_name=self.experiment_name,  # experiment name
             seed=3,  # Seed for experiment reproducibility
             load_best_model_at_end=True,
             metric_for_best_model="eval_accuracy",
@@ -99,10 +97,23 @@ class HuggingFaceRunner(ABC):
         raise NotImplementedError("dataset_loader not implemented")
 
     @abstractmethod
+    def _get_dataset(self, key: str) -> 'SSPDataset':
+        raise NotImplementedError("_get_dataset() not implemented")
+
+    @abstractmethod
     def train(self, model=None) -> 'Trainer':
         raise NotImplementedError("train() not implemented")
 
-    def load_dataset(self, file):
+    def test(self, test_dataset) -> tuple:
+        self.eval_mode = True
+        if isinstance(test_dataset, str):
+            test_dataset = self._get_dataset(test_dataset)
+        trainer = self.get_trainer(model_init=self.model, train_dataset=None, val_dataset=None)
+        predictions, label_ids, metrics = trainer.predict(test_dataset)
+        print(metrics)
+        self.eval_mode = False
+
+    def load_dataset(self, file) -> 'SSPDataset':
         seqs, labels, disorder = self.dataset_loader.load_dataset(path.join(datasetFolderPath, file))
 
         if self.tag2id is None:
@@ -123,33 +134,35 @@ class HuggingFaceRunner(ABC):
 
         return SSPDataset(seqs_encodings, labels_encodings)
 
+    def model(self):
+        try:
+            return AutoModelForTokenClassification.from_pretrained(self.results_dir,
+                                                                   num_labels=self.n_labels,
+                                                                   id2label=self.id2tag,
+                                                                   label2id=self.tag2id,
+                                                                   gradient_checkpointing=False)
+
+        except Exception as e:
+            print(f"Failure loading model from {self.results_dir}. It probably doesn't exist yet.")
+            print(e, f"Loading model from {self.model_name}...")
+            if self.eval_mode:
+                raise e
+            return AutoModelForTokenClassification.from_pretrained(self.model_name,
+                                                                   num_labels=self.n_labels,
+                                                                   id2label=self.id2tag,
+                                                                   label2id=self.tag2id,
+                                                                   gradient_checkpointing=False)
+
     def do_training(self, train_data, val_data, model=None):
 
         if model is None:
-            def model():
-                try:
-                    return AutoModelForTokenClassification.from_pretrained(self.results_dir,
-                                                                           num_labels=self.n_labels,
-                                                                           id2label=self.id2tag,
-                                                                           label2id=self.tag2id,
-                                                                           gradient_checkpointing=False)
-
-                except Exception as e:
-                    print(f"Failure loading model from {self.results_dir}. It probably doesn't exist yet.")
-                    print(e, f"Loading model from {self.model_name}...")
-
-                    return AutoModelForTokenClassification.from_pretrained(self.model_name,
-                                                                           num_labels=self.n_labels,
-                                                                           id2label=self.id2tag,
-                                                                           label2id=self.tag2id,
-                                                                           gradient_checkpointing=False)
-
+            model = self.model
         trainer = self.get_trainer(model, train_dataset=train_data,
                                    val_dataset=val_data)
         trainer.train()
         if trainer.tokenizer is None:
             trainer.tokenizer = self.tokenizer
-        trainer.save_model(self.results_dir)
+        trainer.predict(None).save_model(self.results_dir)
         return trainer
 
     def align_predictions(self, predictions: np.ndarray, label_ids: np.ndarray):

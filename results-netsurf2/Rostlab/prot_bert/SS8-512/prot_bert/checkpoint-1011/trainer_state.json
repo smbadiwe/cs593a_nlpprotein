@@ -1,0 +1,70 @@
+{
+  "best_metric": 0.7990380889706199,
+  "best_model_checkpoint": "./results/Rostlab/prot_bert/SS8-512/prot_bert/checkpoint-1011",
+  "epoch": 2.999258710155671,
+  "global_step": 1011,
+  "is_local_process_zero": true,
+  "is_world_process_zero": true,
+  "log_history": [
+    {
+      "epoch": 0.5930318754633062,
+      "learning_rate": 3e-05,
+      "loss": 0.8999408721923828,
+      "step": 200
+    },
+    {
+      "epoch": 0.9992587101556709,
+      "eval_accuracy": 0.7968116708591391,
+      "eval_f1": 0.71310088811616,
+      "eval_loss": 0.5191685557365417,
+      "eval_precision": 0.8598260573953936,
+      "eval_recall": 0.6091520321123933,
+      "step": 337
+    },
+    {
+      "epoch": 1.1868050407709414,
+      "learning_rate": 2.2601726263871765e-05,
+      "loss": 0.4779425811767578,
+      "step": 400
+    },
+    {
+      "epoch": 1.7798369162342476,
+      "learning_rate": 1.5203452527743525e-05,
+      "loss": 0.4448023986816406,
+      "step": 600
+    },
+    {
+      "epoch": 1.999258710155671,
+      "eval_accuracy": 0.7978203243682077,
+      "eval_f1": 0.7146449945276296,
+      "eval_loss": 0.49415239691734314,
+      "eval_precision": 0.8510301988297607,
+      "eval_recall": 0.6159357752132464,
+      "step": 674
+    },
+    {
+      "epoch": 2.373610081541883,
+      "learning_rate": 7.805178791615289e-06,
+      "loss": 0.4343173217773437,
+      "step": 800
+    },
+    {
+      "epoch": 2.966641957005189,
+      "learning_rate": 4.06905055487053e-07,
+      "loss": 0.42489471435546877,
+      "step": 1000
+    },
+    {
+      "epoch": 2.999258710155671,
+      "eval_accuracy": 0.7990380889706199,
+      "eval_f1": 0.7181827683517401,
+      "eval_loss": 0.485878050327301,
+      "eval_precision": 0.8521938044317054,
+      "eval_recall": 0.6205920722528852,
+      "step": 1011
+    }
+  ],
+  "max_steps": 1011,
+  "num_train_epochs": 3,
+  "total_flos": 41652089778733056
+}

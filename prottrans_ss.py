@@ -105,10 +105,6 @@ class RunnerForNetSurf2(HuggingFaceRunner):
         val_data = self._get_dataset("combinedtest")
         return self.do_training(train_data=train_data, val_data=val_data, model=model)
 
-    def test(self, trainer, dataset_key="casp12test"):
-        test_dataset = self._get_dataset(dataset_key)
-        predictions, label_ids, metrics = trainer.predict(test_dataset)
-
 
 if __name__ == "__main__":
     pass
