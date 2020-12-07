@@ -36,6 +36,8 @@ class BasicSequenceTokenizer:
 # rev = {v:k for k, v in AA_ID_DICT.items()}
 # print(rev)
 
+datasetFolderPath = "dataset/"
+
 
 DATASETS_AND_PATHS = {
     'netsurfp': ('https://www.dropbox.com/s/98hovta9qjmmiby/Train_HHblits.csv?dl=1',
@@ -47,8 +49,17 @@ DATASETS_AND_PATHS = {
     'casp12test': ('https://www.dropbox.com/s/te0vn0t7ocdkra7/CASP12_HHblits.csv?dl=1',
                    'CASP12_HHblits.csv'),
     'combinedtest': ('', 'Validation_HHblits.csv'),
+}
+"""
     'set2018': ('https://raw.githubusercontent.com/sh-maxim/ss/master/S2_Data_set.txt',
                 'set2018.txt')
-}
-
+"""
 datasetFolderPath = "dataset/"
+
+
+def mask_disorder(labels, masks):
+    for label, mask in zip(labels, masks):
+        for i, disorder in enumerate(mask):
+            if disorder == "0.0":
+                # shift by one because of the CLS token at index 0
+                label[i + 1] = -100

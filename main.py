@@ -1,4 +1,5 @@
-from prottrans_ss import HuggingFaceRunner
+from prottrans_ss import RunnerForNetSurf2
+from set2018 import RunnerForSet2018
 
 expt_1 = {
     'experiment_name': "prot_bert",
@@ -15,11 +16,10 @@ expt_2 = {
 }
 
 
-def run():
-    runner = HuggingFaceRunner(**expt_2)
-    runner.get_dataset("netsurfp")
-    # runner.train()
+def train():
+    runner = RunnerForSet2018(**expt_2)
+    runner.train()
 
 
 if __name__ == '__main__':
-    run()
+    train()

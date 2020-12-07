@@ -12,11 +12,10 @@ import pandas as pd
 import requests
 from tqdm.auto import tqdm
 import numpy as np
-from seqeval.metrics import accuracy_score, f1_score, precision_score, recall_score
 import re
-from util import DATASETS_AND_PATHS, AA_ID_DICT, ID_AA_DICT
-
-datasetFolderPath = "dataset/"
+from util import DATASETS_AND_PATHS, datasetFolderPath, mask_disorder
+from huggingface_runner import HuggingFaceRunner
+from ssp_dataset import SSPDataset
 
 
 def download_data(key):
@@ -57,28 +56,6 @@ def download_netsurfp_dataset():
         download_data(k)
 
 
-def mask_disorder(labels, masks):
-    for label, mask in zip(labels, masks):
-        for i, disorder in enumerate(mask):
-            if disorder == "0.0":
-                # shift by one because of the CLS token at index 0
-                label[i + 1] = -100
-
-
-class SS3Dataset(Dataset):
-    def __init__(self, encodings, labels):
-        self.encodings = encodings
-        self.labels = labels
-
-    def __getitem__(self, idx):
-        item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
-        item['labels'] = torch.tensor(self.labels[idx])
-        return item
-
-    def __len__(self):
-        return len(self.labels)
-
-
 class DatasetLoader:
     def __init__(self, max_length, n_labels=8):
         self.n_labels = n_labels
@@ -104,171 +81,33 @@ class DatasetLoader:
         return seqs, labels, disorder
 
 
-class Set2018DatasetLoader(DatasetLoader):
-    def load_dataset(self, file_path) -> tuple:
-        pass
-
-
-class HuggingFaceRunner:
-    def __init__(self, experiment_name, n_labels=3, model_name="Rostlab/prot_bert", max_length=1024):
-        assert n_labels in [3, 8], f"n_labels should be 3 or 8, not {n_labels}"
-        self.model_name = model_name
-        self.n_labels = n_labels
-        if experiment_name is None:
-            experiment_name = model_name.split('/')[-1]
-        self.experiment_name = experiment_name
-        self.max_length = max_length
-        self.results_dir = path.join('./results', model_name, f"SS{n_labels}-{max_length}", experiment_name)
-        self.logs_dir = path.join('./logs', model_name, f"SS{n_labels}-{max_length}", experiment_name)
-        self.seq_tokenizer = self.get_tokenizer()
-        self.id2tag: dict = None
-        self.tag2id: dict = None
+class RunnerForNetSurf2(HuggingFaceRunner):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.results_dir = self.results_dir.replace('./results', './results-netsurf2')
+        self.logs_dir = self.results_dir.replace('./logs', './logs-netsurf2')
         download_netsurfp_dataset()
 
-    def get_tokenizer(self):
-        try:
-            return BertTokenizerFast.from_pretrained(self.results_dir, do_lower_case=False)
-        except Exception as e:
-            print(f"Failure loading tokenizer from {self.results_dir}. It probably doesn't exist yet.")
-            print(e, f"Loading tokenizer from {self.model_name}...")
-            return BertTokenizerFast.from_pretrained(self.model_name, do_lower_case=False)
+    @property
+    def dataset_loader(self):
+        return DatasetLoader(max_length=self.max_length, n_labels=self.n_labels)
 
-    def encode_tags(self, tags, encodings) -> list:
-        labels = [[self.tag2id[tag] for tag in doc] for doc in tags]
-        encoded_labels = []
-        for doc_labels, doc_offset in zip(labels, encodings.offset_mapping):
-            # create an empty array of -100
-            doc_enc_labels = np.ones(len(doc_offset), dtype=int) * -100
-            arr_offset = np.array(doc_offset)
-
-            # set labels whose first offset position is 0 and the second is not 0
-            doc_enc_labels[(arr_offset[:, 0] == 0) & (arr_offset[:, 1] != 0)] = doc_labels
-            encoded_labels.append(doc_enc_labels.tolist())
-
-        return encoded_labels
-
-    def get_trainer(self, model_init, train_dataset, val_dataset, experiment_name=None) -> 'Trainer':
-        if not experiment_name:
-            experiment_name = self.model_name.split('/')[-1]
-
-        training_args = TrainingArguments(
-            output_dir=self.results_dir,  # output directory
-            num_train_epochs=3,  # total number of training epochs
-            per_device_train_batch_size=1,  # batch size per device during training
-            per_device_eval_batch_size=8,  # batch size for evaluation
-            warmup_steps=200,  # number of warmup steps for learning rate scheduler
-            learning_rate=3e-05,  # learning rate
-            weight_decay=0.0,  # strength of weight decay
-            logging_dir=self.logs_dir,  # directory for storing logs
-            logging_steps=200,  # How often to print logs
-            do_train=True,  # Perform training
-            do_eval=(val_dataset is not None),  # Perform evaluation
-            evaluation_strategy="epoch",  # evaluate after each epoch
-            gradient_accumulation_steps=32,  # total number of steps before back propagation
-            fp16=False,  # True,  # Use mixed precision
-            fp16_opt_level="02",  # mixed precision mode
-            run_name=experiment_name,  # experiment name
-            seed=3,  # Seed for experiment reproducibility
-            load_best_model_at_end=True,
-            metric_for_best_model="eval_accuracy",
-            greater_is_better=True,
-        )
-
-        trainer = Trainer(
-            model_init=model_init,  # the instantiated 🤗 Transformers model to be trained
-            args=training_args,  # training arguments, defined above
-            train_dataset=train_dataset,  # training dataset
-            eval_dataset=val_dataset,  # evaluation dataset
-            compute_metrics=self.compute_metrics,  # evaluation metrics
-        )
-
-        return trainer
-
-    def get_dataset(self, key: str) -> 'SS3Dataset':
+    def _get_dataset(self, key: str) -> 'SSPDataset':
         _, file = DATASETS_AND_PATHS[key]
-        if key == 'set2018':
-            loader = Set2018DatasetLoader(max_length=self.max_length, n_labels=self.n_labels)
-        else:
-            loader = DatasetLoader(max_length=self.max_length, n_labels=self.n_labels)
-        seqs, labels, disorder = loader.load_dataset(path.join(datasetFolderPath, file))
-
-        if self.tag2id is None:
-            # Consider each label as a tag for each token
-            unique_tags = set(tag for doc in labels for tag in doc)
-            self.n_labels = len(unique_tags)
-            print(f"Key: {key}. Unique Tags: {self.n_labels}\n", unique_tags)
-            self.tag2id = {tag: i for i, tag in enumerate(unique_tags)}
-            self.id2tag = {i: tag for tag, i in self.tag2id.items()}
-
-        seqs_encodings = self.seq_tokenizer(seqs, is_split_into_words=True,
-                                            return_offsets_mapping=True,
-                                            truncation=True, padding=True)
-
-        labels_encodings = self.encode_tags(labels, seqs_encodings)
-        mask_disorder(labels_encodings, disorder)
-        _ = seqs_encodings.pop("offset_mapping")
-
-        return SS3Dataset(seqs_encodings, labels_encodings)
+        # if key == 'set2018':
+        #     loader = Set2018DatasetLoader(max_length=self.max_length, n_labels=self.n_labels)
+        # else:
+        #     loader = DatasetLoader(max_length=self.max_length, n_labels=self.n_labels)
+        return self.load_dataset(file)
 
     def train(self, model=None) -> 'Trainer':
-        train_data = self.get_dataset("netsurfp")
-        val_data = self.get_dataset("combinedtest")
-
-        if model is None:
-            def model():
-                try:
-                    return AutoModelForTokenClassification.from_pretrained(self.results_dir,
-                                                                           num_labels=self.n_labels,
-                                                                           id2label=self.id2tag,
-                                                                           label2id=self.tag2id,
-                                                                           gradient_checkpointing=False)
-
-                except Exception as e:
-                    print(f"Failure loading model from {self.results_dir}. It probably doesn't exist yet.")
-                    print(e, f"Loading model from {self.model_name}...")
-
-                    return AutoModelForTokenClassification.from_pretrained(self.model_name,
-                                                                           num_labels=self.n_labels,
-                                                                           id2label=self.id2tag,
-                                                                           label2id=self.tag2id,
-                                                                           gradient_checkpointing=False)
-
-        trainer = self.get_trainer(model, train_dataset=train_data,
-                                   val_dataset=val_data)
-        trainer.train()
-        if trainer.tokenizer is None:
-            trainer.tokenizer = self.seq_tokenizer
-        trainer.save_model(self.results_dir)
-        return trainer
+        train_data = self._get_dataset("netsurfp")
+        val_data = self._get_dataset("combinedtest")
+        return self.do_training(train_data=train_data, val_data=val_data, model=model)
 
     def test(self, trainer, dataset_key="casp12test"):
-        test_dataset = self.get_dataset(dataset_key)
+        test_dataset = self._get_dataset(dataset_key)
         predictions, label_ids, metrics = trainer.predict(test_dataset)
-
-    def align_predictions(self, predictions: np.ndarray, label_ids: np.ndarray):
-        preds = np.argmax(predictions, axis=2)
-
-        batch_size, seq_len = preds.shape
-
-        out_label_list = [[] for _ in range(batch_size)]
-        preds_list = [[] for _ in range(batch_size)]
-
-        for i in range(batch_size):
-            for j in range(seq_len):
-                if label_ids[i, j] != torch.nn.CrossEntropyLoss().ignore_index:
-                    out_label_list[i].append(self.id2tag[label_ids[i][j]])
-                    preds_list[i].append(self.id2tag[preds[i][j]])
-
-        return preds_list, out_label_list
-
-    def compute_metrics(self, p: EvalPrediction):
-        preds_list, out_label_list = self.align_predictions(p.predictions, p.label_ids)
-        return {
-            "accuracy": accuracy_score(out_label_list, preds_list),
-            "precision": precision_score(out_label_list, preds_list),
-            "recall": recall_score(out_label_list, preds_list),
-            "f1": f1_score(out_label_list, preds_list),
-        }
 
 
 if __name__ == "__main__":
