@@ -134,6 +134,8 @@ class HuggingFaceRunner(ABC):
 
         seqs_encodings = self.tokenizer(seqs, is_split_into_words=True,
                                         return_offsets_mapping=True,
+                                        max_length=self.max_length,
+                                        pad_to_max_length=True,
                                         truncation=True, padding=True)
 
         labels_encodings = self.encode_tags(labels, seqs_encodings)
