@@ -2,6 +2,8 @@ from prottrans_ss import RunnerForNetSurf2, NetSurf2DatasetLoader
 from set2018 import RunnerForSet2018
 import argparse
 
+"""
+
 expt_prot_bert = {
     'experiment_name': "prot_bert",
     'n_labels': 8,
@@ -16,9 +18,7 @@ expt_prot_bert_bfd = {
     'max_length': 512  # 1024
 }
 
-"""
-
-expt_prot_albert = {
+expt_prot_albert = {  # does not work
     'experiment_name': "prot_albert",
     'n_labels': 8,
     'model_name': "Rostlab/prot_albert",
@@ -30,17 +30,44 @@ Exception: You're trying to run a `Unigram` model but you're file was trained wi
 """
 
 
-def train():
+def get_args() -> tuple:
     parser = argparse.ArgumentParser()
-
+    parser.add_argument('-m', '--maxlen', type=int, default=512,
+                        help='Max sequence length. 1024 is ideal.')
+    parser.add_argument('-l', '--labels', type=int, default=8,
+                        help="Number of labels. Should be 3 or 8. Model will add 1 to this count to cater for unknowns.")
+    parser.add_argument('-e', '--experiment', type=str, default='prot_bert', help="Name of experiment")
+    parser.add_argument('-b', '--bfd', type=bool, default=False,
+                        help="If set, use the BFD version of the prot_bert model. Otherwise, use the UniRef100 version")
+    parser.add_argument('-s', '--set2018', type=bool, default=False)
+    parser.add_argument('-t', '--test', type=bool, default=False,
+                        help="If set, est model on available datasets. Otherwise, train.")
     args = parser.parse_args()
-    runner = RunnerForNetSurf2(**expt_prot_bert)
+    data = {
+        'model_name': "Rostlab/prot_bert",
+        'experiment_name': args.experiment,
+        'n_labels': args.labels,
+        'max_length': args.maxlen  # 512
+    }
+    if args.bfd:
+        data['model_name'] = data['model_name'] + '_bfd'
+        data['experiment_name'] = data['experiment_name'] + '_bfd'
+    if args.set2018:
+        klass = RunnerForSet2018
+    else:
+        klass = RunnerForNetSurf2
+    print("args:", args)
+    return klass, data, args.test
+
+
+def train(Class, data):
+    runner = Class(**data)
     runner.train()
 
 
-def test():
+def test(Class, data):
     results = {}
-    runner = RunnerForNetSurf2(**expt_prot_bert_bfd)
+    runner = Class(**data)
 
     n_params = sum(p.numel() for p in runner.model().parameters())
     print(f"# params: {n_params:,}")
@@ -56,4 +83,8 @@ def test():
 
 
 if __name__ == '__main__':
-    train()
+    klass_, data_, testing = get_args()
+    if testing:
+        test(klass_, data_)
+    else:
+        train(klass_, data_)
