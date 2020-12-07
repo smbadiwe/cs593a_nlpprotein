@@ -139,10 +139,6 @@ class RunnerForSet2018(HuggingFaceRunner):
         val_data = self._get_dataset("valid")
         return self.do_training(train_data=train_data, val_data=val_data, model=model)
 
-    def test(self, trainer, dataset_key="test"):
-        test_dataset = self._get_dataset(dataset_key)
-        predictions, label_ids, metrics = trainer.predict(test_dataset)
-
 
 if __name__ == "__main__":
     runner = Set2018DatasetLoader(max_length=1024, n_labels=8)

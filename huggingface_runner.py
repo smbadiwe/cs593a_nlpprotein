@@ -25,8 +25,16 @@ class HuggingFaceRunner(ABC):
         self.results_dir = path.join('./results', model_name, f"SS{n_labels}-{max_length}", experiment_name)
         self.logs_dir = path.join('./logs', model_name, f"SS{n_labels}-{max_length}", experiment_name)
         self._tokenizer: 'AutoTokenizer' = None
-        self.id2tag: dict = None
-        self.tag2id: dict = None
+        self._model = None
+        # X added for unknowns
+        if n_labels == 8:
+            unique_tags = ['X', 'B', 'C', 'E', 'G', 'H', 'I', 'S', 'T']
+        else:
+            unique_tags = ['X', 'C', 'E', 'H"']
+
+        self.tag2id = {tag: i for i, tag in enumerate(unique_tags)}
+        self.id2tag = {i: tag for tag, i in self.tag2id.items()}
+
         self.eval_mode = False
 
     @property
@@ -104,14 +112,14 @@ class HuggingFaceRunner(ABC):
     def train(self, model=None) -> 'Trainer':
         raise NotImplementedError("train() not implemented")
 
-    def test(self, test_dataset) -> tuple:
+    def test(self, test_dataset) -> dict:
         self.eval_mode = True
         if isinstance(test_dataset, str):
             test_dataset = self._get_dataset(test_dataset)
         trainer = self.get_trainer(model_init=self.model, train_dataset=None, val_dataset=None)
         predictions, label_ids, metrics = trainer.predict(test_dataset)
-        print(metrics)
         self.eval_mode = False
+        return metrics
 
     def load_dataset(self, file) -> 'SSPDataset':
         seqs, labels, disorder = self.dataset_loader.load_dataset(path.join(datasetFolderPath, file))
@@ -135,23 +143,25 @@ class HuggingFaceRunner(ABC):
         return SSPDataset(seqs_encodings, labels_encodings)
 
     def model(self):
-        try:
-            return AutoModelForTokenClassification.from_pretrained(self.results_dir,
-                                                                   num_labels=self.n_labels,
-                                                                   id2label=self.id2tag,
-                                                                   label2id=self.tag2id,
-                                                                   gradient_checkpointing=False)
+        if self._model is None:
+            try:
+                self._model = AutoModelForTokenClassification.from_pretrained(self.results_dir,
+                                                                              num_labels=self.n_labels,
+                                                                              id2label=self.id2tag,
+                                                                              label2id=self.tag2id,
+                                                                              gradient_checkpointing=False)
 
-        except Exception as e:
-            print(f"Failure loading model from {self.results_dir}. It probably doesn't exist yet.")
-            print(e, f"Loading model from {self.model_name}...")
-            if self.eval_mode:
-                raise e
-            return AutoModelForTokenClassification.from_pretrained(self.model_name,
-                                                                   num_labels=self.n_labels,
-                                                                   id2label=self.id2tag,
-                                                                   label2id=self.tag2id,
-                                                                   gradient_checkpointing=False)
+            except Exception as e:
+                print(f"Failure loading model from {self.results_dir}. It probably doesn't exist yet.")
+                print(e, f"Loading model from {self.model_name}...")
+                if self.eval_mode:
+                    raise e
+                self._model = AutoModelForTokenClassification.from_pretrained(self.model_name,
+                                                                              num_labels=self.n_labels,
+                                                                              id2label=self.id2tag,
+                                                                              label2id=self.tag2id,
+                                                                              gradient_checkpointing=False)
+        return self._model
 
     def do_training(self, train_data, val_data, model=None):
 
@@ -162,7 +172,7 @@ class HuggingFaceRunner(ABC):
         trainer.train()
         if trainer.tokenizer is None:
             trainer.tokenizer = self.tokenizer
-        trainer.predict(None).save_model(self.results_dir)
+        trainer.save_model(self.results_dir)
         return trainer
 
     def align_predictions(self, predictions: np.ndarray, label_ids: np.ndarray):

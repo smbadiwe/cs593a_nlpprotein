@@ -56,7 +56,7 @@ def download_netsurfp_dataset():
         download_data(k)
 
 
-class DatasetLoader:
+class NetSurf2DatasetLoader:
     def __init__(self, max_length, n_labels=8):
         self.n_labels = n_labels
         self.max_length = max_length
@@ -90,14 +90,14 @@ class RunnerForNetSurf2(HuggingFaceRunner):
 
     @property
     def dataset_loader(self):
-        return DatasetLoader(max_length=self.max_length, n_labels=self.n_labels)
+        return NetSurf2DatasetLoader(max_length=self.max_length, n_labels=self.n_labels)
 
     def _get_dataset(self, key: str) -> 'SSPDataset':
         _, file = DATASETS_AND_PATHS[key]
         # if key == 'set2018':
         #     loader = Set2018DatasetLoader(max_length=self.max_length, n_labels=self.n_labels)
         # else:
-        #     loader = DatasetLoader(max_length=self.max_length, n_labels=self.n_labels)
+        #     loader = NetSurf2DatasetLoader(max_length=self.max_length, n_labels=self.n_labels)
         return self.load_dataset(file)
 
     def train(self, model=None) -> 'Trainer':
