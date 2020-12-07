@@ -6,7 +6,7 @@ Github: https://github.com/sh-maxim/ss
 
 from transformers import Trainer
 from ssp_dataset import SSPDataset
-from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampler
+from util import datasetFolderPath
 from os import path
 import re
 import pandas as pd
@@ -15,13 +15,7 @@ from huggingface_runner import HuggingFaceRunner
 # Details of the dataset at https://github.com/alrojo/CB513/
 
 DOWNLOAD_LINK = "https://raw.githubusercontent.com/sh-maxim/ss/master/S2_Data_set.txt"
-ROOT_DATA_PATH = "./dataset"
-
-TXT_FILE = path.join(ROOT_DATA_PATH, "set2018.txt")
-H5_FILE = path.join(ROOT_DATA_PATH, "set2018.hdf5")
-
-LABEL_3_MAP = {'X': 0, 'H': 1, 'E': 2, 'C': 3}
-LABEL_8_MAP = {'X': 0, 'H': 1, 'E': 2, 'C': 3, 'T': 4, 'G': 5, 'S': 6, 'B': 7, 'I': 8}
+TXT_FILE = path.join(datasetFolderPath, "set2018.txt")
 
 
 def ensure_data_exists():
@@ -138,7 +132,7 @@ class RunnerForSet2018(HuggingFaceRunner):
         if self._loader is None:
             _ = self.dataset_loader
         self._loader.data_split = key
-        return self.load_dataset(TXT_FILE)
+        return self.load_dataset("set2018.txt")
 
     def train(self, model=None) -> 'Trainer':
         train_data = self._get_dataset("train")

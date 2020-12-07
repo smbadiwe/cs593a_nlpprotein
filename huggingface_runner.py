@@ -2,21 +2,17 @@
 Some intuition from
 https://github.com/agemagician/ProtTrans/blob/master/Fine-Tuning/ProtBert-BFD-FineTune-SS3.ipynb
 """
-import torch
-from transformers import AutoTokenizer, Trainer, TrainingArguments, AutoModelForTokenClassification, BertTokenizerFast, \
-    EvalPrediction, PreTrainedTokenizerBase
-from torch.utils.data import Dataset
-import os
-from os import path
-import pandas as pd
-import requests
-from tqdm.auto import tqdm
-import re
-import numpy as np
-from seqeval.metrics import accuracy_score, f1_score, precision_score, recall_score
-from util import datasetFolderPath, mask_disorder
-from ssp_dataset import SSPDataset
 from abc import ABC, abstractmethod
+from os import path
+
+import numpy as np
+import torch
+from seqeval.metrics import accuracy_score, f1_score, precision_score, recall_score
+from transformers import Trainer, TrainingArguments, AutoModelForTokenClassification, \
+    BertTokenizerFast, AlbertTokenizerFast, EvalPrediction, AutoTokenizer
+
+from ssp_dataset import SSPDataset
+from util import datasetFolderPath, mask_disorder
 
 
 class HuggingFaceRunner(ABC):
@@ -30,20 +26,21 @@ class HuggingFaceRunner(ABC):
         self.max_length = max_length
         self.results_dir = path.join('./results', model_name, f"SS{n_labels}-{max_length}", experiment_name)
         self.logs_dir = path.join('./logs', model_name, f"SS{n_labels}-{max_length}", experiment_name)
-        self._tokenizer: 'BertTokenizerFast' = None
+        self._tokenizer: 'AutoTokenizer' = None
         self.id2tag: dict = None
         self.tag2id: dict = None
 
+    @property
     def tokenizer(self):
         if self._tokenizer is None:
             try:
-                self._tokenizer = BertTokenizerFast.from_pretrained(self.results_dir,
-                                                                    do_lower_case=False)
+                self._tokenizer = AutoTokenizer.from_pretrained(self.results_dir, do_lower_case=False, use_fast=True)
             except Exception as e:
                 print(f"Failure loading tokenizer from {self.results_dir}. It probably doesn't exist yet.")
                 print(e, f"Loading tokenizer from {self.model_name}...")
-                self._tokenizer = BertTokenizerFast.from_pretrained(self.model_name,
-                                                                    do_lower_case=False).encode()
+                self._tokenizer = AutoTokenizer.from_pretrained(self.model_name, do_lower_case=False, use_fast=True)
+
+            print("TOKENIZER: ", self._tokenizer.__class__.__name__)
         return self._tokenizer
 
     def encode_tags(self, tags, encodings) -> list:
