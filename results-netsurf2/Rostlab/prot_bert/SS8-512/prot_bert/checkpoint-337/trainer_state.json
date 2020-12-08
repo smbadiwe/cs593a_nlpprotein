@@ -1,0 +1,28 @@
+{
+  "best_metric": 0.7963749976936276,
+  "best_model_checkpoint": "./results-netsurf2/Rostlab/prot_bert/SS8-512/prot_bert/checkpoint-337",
+  "epoch": 0.9992587101556709,
+  "global_step": 337,
+  "is_local_process_zero": true,
+  "is_world_process_zero": true,
+  "log_history": [
+    {
+      "epoch": 0.5930318754633062,
+      "learning_rate": 3e-05,
+      "loss": 0.9638436889648437,
+      "step": 200
+    },
+    {
+      "epoch": 0.9992587101556709,
+      "eval_accuracy": 0.7963749976936276,
+      "eval_f1": 0.7142520167948293,
+      "eval_loss": 0.5293022394180298,
+      "eval_precision": 0.8660584045991476,
+      "eval_recall": 0.607727044656297,
+      "step": 337
+    }
+  ],
+  "max_steps": 1011,
+  "num_train_epochs": 3,
+  "total_flos": 13887495452811264
+}

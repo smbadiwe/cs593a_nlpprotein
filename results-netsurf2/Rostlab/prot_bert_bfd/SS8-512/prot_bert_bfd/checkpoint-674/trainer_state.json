@@ -1,0 +1,49 @@
+{
+  "best_metric": 0.7980909387242994,
+  "best_model_checkpoint": "./results-netsurf2/Rostlab/prot_bert_bfd/SS8-512/prot_bert_bfd/checkpoint-674",
+  "epoch": 1.999258710155671,
+  "global_step": 674,
+  "is_local_process_zero": true,
+  "is_world_process_zero": true,
+  "log_history": [
+    {
+      "epoch": 0.5930318754633062,
+      "learning_rate": 3e-05,
+      "loss": 1.1004032897949219,
+      "step": 200
+    },
+    {
+      "epoch": 0.9992587101556709,
+      "eval_accuracy": 0.7948681677562994,
+      "eval_f1": 0.7146094469230224,
+      "eval_loss": 0.5429767966270447,
+      "eval_precision": 0.8673963496747944,
+      "eval_recall": 0.6075865529352734,
+      "step": 337
+    },
+    {
+      "epoch": 1.1868050407709414,
+      "learning_rate": 2.2601726263871765e-05,
+      "loss": 0.5063595581054687,
+      "step": 400
+    },
+    {
+      "epoch": 1.7798369162342476,
+      "learning_rate": 1.5203452527743525e-05,
+      "loss": 0.4567350769042969,
+      "step": 600
+    },
+    {
+      "epoch": 1.999258710155671,
+      "eval_accuracy": 0.7980909387242994,
+      "eval_f1": 0.7160692804503462,
+      "eval_loss": 0.5002745389938354,
+      "eval_precision": 0.856360690541371,
+      "eval_recall": 0.6152734570998495,
+      "step": 674
+    }
+  ],
+  "max_steps": 1011,
+  "num_train_epochs": 3,
+  "total_flos": 27774990905622528
+}

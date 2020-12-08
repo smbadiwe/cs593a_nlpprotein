@@ -1,4 +1,4 @@
-from prottrans_ss import RunnerForNetSurf2, NetSurf2DatasetLoader
+from netsurfp2 import RunnerForNetSurfp2, NetSurfp2DatasetLoader
 from set2018 import RunnerForSet2018
 import argparse
 
@@ -33,15 +33,15 @@ Exception: You're trying to run a `Unigram` model but you're file was trained wi
 def get_args() -> tuple:
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--maxlen', type=int, default=512,
-                        help='Max sequence length. 1024 is ideal.')
+                        help='Max sequence length. 1024 is used in the model but may not run on low-resource machine.')
     parser.add_argument('-l', '--labels', type=int, default=8,
                         help="Number of labels. Should be 3 or 8. Model will add 1 to this count to cater for unknowns.")
     parser.add_argument('-e', '--experiment', type=str, default='prot_bert', help="Name of experiment")
-    parser.add_argument('-b', '--bfd', type=bool, default=False,
+    parser.add_argument('-b', '--bfd', action='store_true', default=False,
                         help="If set, use the BFD version of the prot_bert model. Otherwise, use the UniRef100 version")
-    parser.add_argument('-s', '--set2018', type=bool, default=False)
-    parser.add_argument('-t', '--test', type=bool, default=False,
-                        help="If set, est model on available datasets. Otherwise, train.")
+    parser.add_argument('-s', '--set2018', action='store_true', default=False)
+    parser.add_argument('-t', '--test', action='store_true', default=False,
+                        help="If set, test model on available datasets. Otherwise, train.")
     args = parser.parse_args()
     data = {
         'model_name': "Rostlab/prot_bert",
@@ -55,7 +55,7 @@ def get_args() -> tuple:
     if args.set2018:
         klass = RunnerForSet2018
     else:
-        klass = RunnerForNetSurf2
+        klass = RunnerForNetSurfp2
     print("args:", args)
     return klass, data, args.test
 
@@ -88,3 +88,5 @@ if __name__ == '__main__':
         test(klass_, data_)
     else:
         train(klass_, data_)
+
+    # prot_bert 512 netsurf done

@@ -1,0 +1,43 @@
+{
+  "best_metric": 0.6923496412634733,
+  "best_model_checkpoint": "./results-set2018/Rostlab/prot_bert/SS8-512/prot_bert/checkpoint-480",
+  "epoch": 1.9964966913195796,
+  "global_step": 480,
+  "is_local_process_zero": true,
+  "is_world_process_zero": true,
+  "log_history": [
+    {
+      "epoch": 0.830413909432983,
+      "learning_rate": 3e-05,
+      "loss": 1.3923599243164062,
+      "step": 200
+    },
+    {
+      "epoch": 0.9964966913195796,
+      "eval_accuracy": 0.6780238904774776,
+      "eval_f1": 0.5973944068040941,
+      "eval_loss": 0.9708059430122375,
+      "eval_precision": 0.656950361636778,
+      "eval_recall": 0.5477390255588415,
+      "step": 240
+    },
+    {
+      "epoch": 1.6643311275463866,
+      "learning_rate": 1.8461538461538465e-05,
+      "loss": 0.8823307800292969,
+      "step": 400
+    },
+    {
+      "epoch": 1.9964966913195796,
+      "eval_accuracy": 0.6923496412634733,
+      "eval_f1": 0.6327406392773235,
+      "eval_loss": 0.8977800607681274,
+      "eval_precision": 0.6656634197949728,
+      "eval_recall": 0.6029210104581426,
+      "step": 480
+    }
+  ],
+  "max_steps": 720,
+  "num_train_epochs": 3,
+  "total_flos": 19835234887845888
+}
