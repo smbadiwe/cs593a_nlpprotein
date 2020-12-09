@@ -26,6 +26,7 @@ class HuggingFaceRunner(ABC):
         self.logs_dir = path.join('./logs', model_name, f"SS{n_labels}-{max_length}", experiment_name)
         self._tokenizer: 'AutoTokenizer' = None
         self._model = None
+        self._loader = None
         # X added for unknowns
         if n_labels == 8:
             unique_tags = ['X', 'B', 'C', 'E', 'G', 'H', 'I', 'S', 'T']
@@ -102,6 +103,8 @@ class HuggingFaceRunner(ABC):
 
     @property
     def dataset_loader(self):
+        if self._loader is not None:
+            return self._loader
         raise NotImplementedError("dataset_loader not implemented")
 
     @abstractmethod
@@ -132,6 +135,9 @@ class HuggingFaceRunner(ABC):
             self.tag2id = {tag: i for i, tag in enumerate(unique_tags)}
             self.id2tag = {i: tag for tag, i in self.tag2id.items()}
 
+        return self._to_dataset(seqs, labels, disorder)
+
+    def _to_dataset(self, seqs, labels, disorder) -> 'SSPDataset':
         seqs_encodings = self.tokenizer(seqs, is_split_into_words=True,
                                         return_offsets_mapping=True,
                                         max_length=self.max_length,

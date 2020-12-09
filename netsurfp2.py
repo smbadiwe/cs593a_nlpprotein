@@ -90,7 +90,9 @@ class RunnerForNetSurfp2(HuggingFaceRunner):
 
     @property
     def dataset_loader(self):
-        return NetSurfp2DatasetLoader(max_length=self.max_length, n_labels=self.n_labels)
+        if self._loader is None:
+            self._loader = NetSurfp2DatasetLoader(max_length=self.max_length, n_labels=self.n_labels)
+        return self._loader
 
     def _get_dataset(self, key: str) -> 'SSPDataset':
         _, file = DATASETS_AND_PATHS[key]

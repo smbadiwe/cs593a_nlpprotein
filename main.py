@@ -1,5 +1,8 @@
 from netsurfp2 import RunnerForNetSurfp2, NetSurfp2DatasetLoader
 from set2018 import RunnerForSet2018
+from huggingface_runner import HuggingFaceRunner
+from os import path
+from util import datasetFolderPath
 import argparse
 
 """
@@ -41,7 +44,7 @@ def get_args() -> tuple:
                         help="If set, use the BFD version of the prot_bert model. Otherwise, use the UniRef100 version")
     parser.add_argument('-s', '--set2018', action='store_true', default=False)
     parser.add_argument('-t', '--test', action='store_true', default=False,
-                        help="If set, test model on available datasets. Otherwise, train.")
+                        help="If set, test model on available attempts. Otherwise, train.")
     args = parser.parse_args()
     data = {
         'model_name': "Rostlab/prot_bert",
@@ -67,16 +70,18 @@ def train(Class, data):
 
 def test(Class, data):
     results = {}
-    runner = Class(**data)
+    runner: 'HuggingFaceRunner' = Class(**data)
 
     n_params = sum(p.numel() for p in runner.model().parameters())
     print(f"# params: {n_params:,}")
 
     test_files = ['CB513_HHblits.csv', 'CASP12_HHblits.csv', 'TS115_HHblits.csv']
     for test_file in test_files:
-        d_set = runner.load_dataset(test_file)
-        metrics = runner.test(d_set)
-        results[test_file] = metrics
+        runner._loader = NetSurfp2DatasetLoader(max_length=runner.max_length, n_labels=runner.n_labels)
+        d_set = runner._loader.load_dataset(path.join(datasetFolderPath, test_file))
+        d_set = runner._to_dataset(*d_set)
+        # print(f"Test File: {test_file}. d-set:\n{d_set}")
+        results[test_file] = runner.test(d_set)
 
     for k, v in results.items():
         print(f"{k}:\n{v}")

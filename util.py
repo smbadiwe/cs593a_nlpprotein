@@ -11,7 +11,7 @@ ID_AA_DICT = {0: '', 1: 'A', 2: 'C', 3: 'D', 4: 'E', 5: 'F', 6: 'G', 7: 'H', 8: 
 def print_info(h5_obj, file_sep='\t'):
     def __print_details(obj, sep):
         """
-        Iterate through groups in a HDF5 file and prints the groups and datasets names and datasets attributes
+        Iterate through groups in a HDF5 file and prints the groups and attempts names and attempts attributes
         """
         if type(obj) in [h5py.Group, h5py.File]:
             for key in obj.keys():

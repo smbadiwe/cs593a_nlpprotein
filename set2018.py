@@ -118,7 +118,6 @@ class RunnerForSet2018(HuggingFaceRunner):
         self.results_dir = self.results_dir.replace('./results', './results-set2018')
         self.logs_dir = self.results_dir.replace('./logs', './logs-set2018')
         ensure_data_exists()
-        self._loader = None
 
     @property
     def dataset_loader(self):
